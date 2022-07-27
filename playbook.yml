@@ -2,6 +2,8 @@
 - name: Configure the virtual machine
   hosts: all
   become: true
+  vars:
+    node_exporter_version: '1.3.1'
 
   tasks:
     - name: Install the required system packages
@@ -32,3 +34,24 @@
           - docker-compose-plugin
         state: latest
         update_cache: true
+
+    # stolen here https://sitidy.id/use-ansible-to-deploy-prometheus-node-exporter-47d9bcec8896
+
+    - name: Download and unpack Node Exporter
+      ansible.builtin.unarchive:
+        src: https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz
+        dest: /usr/local/bin/
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: init node_exporter service
+      ansible.builtin.copy:
+        src: /vagrant/resources/node_exporter.service
+        dest: /lib/systemd/system/node_exporter.service
+
+    - name: Start and enable systemd service
+      ansible.builtin.systemd:
+        daemon_reload: yes
+        enabled: yes
+        state: started
+        name: node_exporter
