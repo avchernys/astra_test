@@ -20,3 +20,4 @@ You need to install Vagrant and VirtualBox before you start
 `
 vagrant up
 `
+Grafana credentials `admin/admin`
