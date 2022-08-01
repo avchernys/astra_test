@@ -4,20 +4,27 @@
   become: true
   vars:
     node_exporter_version: '1.3.1'
+    path_to_compose: '/opt/compose/'
+    grafana_dashboard: 'https://grafana.com/api/dashboards/1860'
+    grafana_dashboard_file_name: 'grafana_dashboard.json'
+
 
   tasks:
+
+    # Docker
     - name: Install the required system packages
       ansible.builtin.apt:
         pkg:
           - ca-certificates
           - curl
           - gnupg
+          - python3-pip
         state: latest
         update_cache: true
 
     - name: Add Docker GPG apt Key
       ansible.builtin.apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
+        url: 'https://download.docker.com/linux/ubuntu/gpg'
         state: present
 
     - name: Add Docker Repository
@@ -35,19 +42,20 @@
         state: latest
         update_cache: true
 
+    # Node exporter
     # stolen here https://sitidy.id/use-ansible-to-deploy-prometheus-node-exporter-47d9bcec8896
 
     - name: Download and unpack Node Exporter
       ansible.builtin.unarchive:
-        src: https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz
+        src: 'https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz'
         dest: /usr/local/bin/
         remote_src: yes
         extra_opts: [--strip-components=1]
 
     - name: init node_exporter service
       ansible.builtin.copy:
-        src: /vagrant/resources/node_exporter.service
-        dest: /lib/systemd/system/node_exporter.service
+        src: '/vagrant/resources/node_exporter.service'
+        dest: '/lib/systemd/system/node_exporter.service'
 
     - name: Start and enable systemd service
       ansible.builtin.systemd:
@@ -55,3 +63,45 @@
         enabled: yes
         state: started
         name: node_exporter
+
+    # docker-compose
+    - name: Copying resource files to the VM
+      ansible.builtin.copy:
+        src: '{{ item }}'
+        dest: '{{ path_to_compose }}'
+        mode: '0755'
+      loop:
+        - '/vagrant/resources/docker-compose.yml'
+        - '/vagrant/resources/prometheus.yml'
+
+
+    - name: Creating required folders
+      ansible.builtin.file:
+        path: '{{ path_to_compose }}/{{ item }}'
+        state: directory
+        mode: '0755'
+      loop:
+        - 'grafana/provisioning/datasources'
+        - 'grafana/provisioning/dashboards'
+        - 'grafana_data'
+        - 'prometheus_data'
+
+    - name: Getting Grafana dashboard
+      ansible.builtin.get_url:
+        url: '{{ grafana_dashboard }}/revisions/27/download'
+        dest: '{{ path_to_compose }}/grafana/provisioning/dashboards/{{ grafana_dashboard_file_name }}'
+        mode: '0755'
+
+    - name: Installing docker and docker-compose lib for python
+      ansible.builtin.pip:
+        name:
+          - docker
+          - docker-compose
+        state: present
+
+    # executing docker-compose
+    - name: run docker-compose
+      community.docker.docker_compose:
+        project_name: astra_monitoring
+        project_src: '{{ path_to_compose }}'
+        state: present
