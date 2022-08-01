@@ -54,7 +54,7 @@
 
     - name: init node_exporter service
       ansible.builtin.copy:
-        src: '/vagrant/resources/node_exporter.service'
+        src: '/vagrant/resources/node_exporter/node_exporter.service'
         dest: '/lib/systemd/system/node_exporter.service'
 
     - name: Start and enable systemd service
@@ -72,7 +72,7 @@
         mode: '0755'
       loop:
         - '/vagrant/resources/docker-compose.yml'
-        - '/vagrant/resources/prometheus.yml'
+        - '/vagrant/resources/prometheus/prometheus.yml'
 
 
     - name: Creating required folders
