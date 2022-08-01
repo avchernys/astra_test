@@ -64,17 +64,6 @@
         state: started
         name: node_exporter
 
-    # docker-compose
-    - name: Copying resource files to the VM
-      ansible.builtin.copy:
-        src: '{{ item }}'
-        dest: '{{ path_to_compose }}'
-        mode: '0755'
-      loop:
-        - '/vagrant/resources/docker-compose.yml'
-        - '/vagrant/resources/prometheus/prometheus.yml'
-
-
     - name: Creating required folders
       ansible.builtin.file:
         path: '{{ path_to_compose }}/{{ item }}'
@@ -85,6 +74,24 @@
         - 'grafana/provisioning/dashboards'
         - 'grafana_data'
         - 'prometheus_data'
+
+    - name: Copying resource files to the VM
+      ansible.builtin.copy:
+        src: '{{ item }}'
+        dest: '{{ path_to_compose }}'
+        mode: '0755'
+      loop:
+        - '/vagrant/resources/docker-compose.yml'
+        - '/vagrant/resources/prometheus/prometheus.yml'
+
+    - name: Copying grafana config files files to the VM
+      ansible.builtin.copy:
+        src: '{{ item.src }}'
+        dest: '{{ item.dest }}'
+        mode: '0755'
+      loop:
+        - { src: '/vagrant/resources/grafana/dashboard.yml', dest: '{{ path_to_compose }}/grafana/provisioning/dashboards' }
+        - { src: '/vagrant/resources/grafana/datasource.yml', dest: '{{ path_to_compose }}/grafana/provisioning/datasources' }
 
     - name: Getting Grafana dashboard
       ansible.builtin.get_url:
